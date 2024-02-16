@@ -1,0 +1,18 @@
+[global]
+disableWatchdogWarning = true
+showWarningOnDirectExecution = false
+
+[client]
+showErrorDetails  = true
+
+[server]
+fileWatcherType = "none"
+headless = true
+enableCORS=false
+enableXsrfProtection=false
+
+[logger]
+level = "info"
+
+[browser]
+gatherUsageStats = false
