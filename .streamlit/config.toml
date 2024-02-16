@@ -1,5 +1,4 @@
 [global]
-disableWatchdogWarning = true
 showWarningOnDirectExecution = false
 
 [client]
