@@ -1,6 +1,9 @@
+"""Data module for the web archive diff tool."""
+
 import re
 import os
 import html
+import random
 from typing import Union, Tuple
 from datetime import datetime, timedelta
 
@@ -13,13 +16,18 @@ from bs4 import BeautifulSoup, Comment
 
 from loguru import logger
 
+from constants import (
+    HTML_CODE,
+    CSS_CODE,
+    JS_CODE,
+    WBM_REGEX,
+    MAX_MEMENTO_LINES,
+    TOP_USERAGENTS_URL,
+    DEFAULT_USER_AGENT,
+    TIMEOUT,
+)
 
-WBM_REGEX = r"(?:https?:\\?\/\\?\/web\.archive\.org\\?\/web\\?\/\w+\\?\/|\\?\/web\\?\/\w+\\?\/https?:\\?\/\\?\/web\.archive\.org\\?\/screenshot\\?\/|(?<=\"|\')\\?\/web\\?\/\w+\\?\/)"
-MAX_MEMENTO_LINES = 100
-USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
 
-
-# Function to retrieve available memento URLs and their datetimes for a URL from the TimeMap service
 def get_available_dates(url: str, history_days: int = 365) -> Union[dict, None]:
     """
     Retrieve available memento URLs and their datetimes for a URL from the TimeMap service.
@@ -65,12 +73,14 @@ def get_available_dates(url: str, history_days: int = 365) -> Union[dict, None]:
                         datetime_str, "%a, %d %b %Y %H:%M:%S GMT"
                     )
                     if rel == "memento" and datetime_obj >= start_date:
-                        mementos[memento_url] = datetime_obj
+                        # Format datetime_obj to nice date MM/DD/YYYY - HH:MM AM/PM
+                        formatted_date = datetime_obj.strftime("%m/%d/%Y - %I:%M %p")
+                        mementos[memento_url] = formatted_date
                         if len(mementos) >= MAX_MEMENTO_LINES:
                             break
             return mementos
         else:
-            logger.warn(
+            logger.warning(
                 f"Failed to fetch TimeMap data. Status code: {response.status_code}"
             )
             return None
@@ -82,11 +92,7 @@ def get_available_dates(url: str, history_days: int = 365) -> Union[dict, None]:
 
 def clean_wayback_html(content: str) -> str:
     """
-    Cleans HTML content retrieved from the Wayback Machine by:
-    - Removing elements (like <script>, <link>, <iframe>, <img>) that contain "archive.org" in their src or href.
-    - Removing specific <script> tags based on their content (window.RufflePlayer or _wm.wombat).
-    - Fixing internal links and script URLs to ensure Wayback Machine URL prefixes are removed only when they appear at the beginning.
-    - Adjusting URLs in scripts or JSON+LD with specific preceding characters.
+    Cleans HTML content retrieved from the Wayback Machine by removing specific elements and comments.
 
     Parameters
     ----------
@@ -164,10 +170,26 @@ def beautify_file(content: str, file_type: str) -> str:
     return beautified_content
 
 
-class UnsupportedContentError(Exception):
-    """Error class for unsupported content."""
+def get_random_user_agent() -> str:
+    """Grabs a random user agent from the top user agents list.
 
-    pass
+    Returns
+    -------
+    str
+      A random user agent or the default user agent if the top user agents list cannot be fetched.
+    """
+
+    response = requests.get(TOP_USERAGENTS_URL)
+    if response.status_code == 200:
+        user_agents = response.json()
+        # Randomly select a user agent
+        loc = random.randint(0, len(user_agents) - 1)
+        return user_agents[loc]
+    else:
+        logger.warning(
+            f"Failed to fetch top user agents. Status code: {response.status_code}"
+        )
+        return DEFAULT_USER_AGENT
 
 
 def fetch_and_beautify_content(url: str) -> Union[str, None]:
@@ -183,24 +205,32 @@ def fetch_and_beautify_content(url: str) -> Union[str, None]:
     Union[str, None]
       The beautified content or None if the content could not be fetched.
 
-    Raises
-    ------
-    UnsupportedContentError
-      If the content type is not supported.
     """
 
     # Fetch content
-    headers = {"User-Agent": USER_AGENT}  # Set the user agent to avoid 403 errors
+    headers = {
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "identity",
+        "Cache-Control": "no-cache",
+        "User-Agent": get_random_user_agent(),
+        "Dnt": "1",
+        "Pragma": "no-cache",
+        "Upgrade-Insecure-Requests": "1",
+    }  # Set the user agent to avoid 403 errors
 
-    response = requests.get(url, headers=headers)
+    response = requests.get(url, headers=headers, timeout=TIMEOUT)
 
     if response.status_code == 200:
+
         content_type = response.headers["Content-Type"]
         content = response.text
+
+        # Removes the Wayback Machine footer
         content = re.split(r"(?:/\*|<!--)\s+FILE ARCHIVED ON", content, maxsplit=1)[
             0
         ].strip()
 
+        # Remove Wayback Machine URLs
         wbm_url_pattern = re.compile(WBM_REGEX)
         content = re.sub(
             wbm_url_pattern,
@@ -208,8 +238,10 @@ def fetch_and_beautify_content(url: str) -> Union[str, None]:
             content,
         )
 
+        # Arbitrary length check to ensure content is not empty or too short
         if not content or len(content) < 50:
-            logger.warn(f"Failed to fetch content from {url}.")
+            st.warning(f"No content returned for {url}.")
+            logger.warning(f"No content returned for {url}.")
             return None
 
         if "text/html" in content_type:
@@ -222,25 +254,30 @@ def fetch_and_beautify_content(url: str) -> Union[str, None]:
             beautified_content = beautify_file(content, "js")
 
         else:
-            logger.error(f"Unsupported content type: {content_type}")
+            st.warning(
+                f"Unsupported content type: {content_type}. Please use 'text/html', 'text/css', or 'application/javascript'."
+            )
             logger.error(
-                f"Please use 'text/html', 'text/css', or 'application/javascript'."
+                f"Unsupported content type: {content_type}. Please use 'text/html', 'text/css', or 'application/javascript'."
             )
 
-            # Raise an error on incorrect content
-            raise UnsupportedContentError(f"Unsupported content type: {content_type}")
+            return None
 
         return beautified_content
 
     elif response.status_code in [404, 403]:
-        logger.warning(f"{url} does not exist in the Wayback Machine.")
-        return None
+        st.warning(f"{url} does not exist or we have been blocked.")
+        logger.warning(f"{url} does not exist or we have been blocked.")
 
     else:
+        st.warning(
+            f"Failed to fetch content from {url}. Status code: {response.status_code}"
+        )
         logger.warning(
             f"Failed to fetch content from {url}. Status code: {response.status_code}"
         )
-        return None
+
+    return None
 
 
 def process_op(op: str) -> Union[str, None]:
@@ -253,8 +290,8 @@ def process_op(op: str) -> Union[str, None]:
 
     Returns
     -------
-    str
-      The processed diff operation.
+    Union[str, None]
+      The processed diff operation or None if the operation is no diff.
     """
     if op == diff_match_patch.DIFF_INSERT:
         return "added"
@@ -278,7 +315,7 @@ def process_temp(
     temp: list
       A list of tuples containing the diff operations and lines.
     clear_temp: bool
-      Whether this is the last line to be processed.
+      Whether this is the last line to be processed and the temp list should be cleared.
 
 
     Returns
@@ -306,160 +343,21 @@ def process_temp(
     return line_html, temp
 
 
-CSS_CODE = """
-body {
-			  font-family: monospace;
-			  white-space: pre;
-			  position: relative;
-        background: #fbfbfb;
-			}
-			#diff-container .line {
-			  float: left;
-			  width: 100%;
-			}
-			#diff-container .line-num {
-			  color: #999;
-			  padding-right: 10px;
-			  margin-right: 10px;
-			  display: inline-block;
-			  width: auto;
-			  border-right: 1px solid #ececec;
-			}
-			#diff-container .added {
-			  background-color: #cfc;
-			}
-			#diff-container .deleted {
-			  background-color: #fdd;
-			}
-			#diff-container {
-			  margin: 0;
-			  padding: 0;
-			  float: left;
-			  display: table;
-			}
-			/* Sticky sidebar */
-			#sidebar {
-			  position: fixed;
-			  top: 0;
-			  right: 0;
-			  width: 20px;
-			  height: 100%;
-			  background-color: #ddd;
-			  overflow-y: auto;
-			  opacity: 0.25;
-			}
-
-			/* Marker styles */
-			.marker {
-			  background-color: #f00;
-			  width: 100%;
-			  margin: 0;
-			  padding: 0;
-			}
-"""
-
-
-JS_CODE = """
- document.addEventListener("DOMContentLoaded", function() {
- 	const diffContainer = document.getElementById("diff-container");
- 	const sidebar = document.getElementById("sidebar");
- 	const lines = diffContainer.querySelectorAll(".line");
- 	const screenHeight = window.innerHeight;
- 	const lineNums = diffContainer.querySelectorAll("span.line-num");
-
- 	// Calculate initial marker height based on screen height and number of lines
- 	const initialMarkerHeight = screenHeight / lines.length;
-
- 	lines.forEach(line => {
- 		const added = line.querySelector(".added");
- 		const deleted = line.querySelector(".deleted");
- 		const marker = document.createElement("div");
- 		marker.classList.add("marker");
-
- 		// Set initial height for each marker
- 		marker.style.height = `${initialMarkerHeight}px`;
-
- 		// Determine and set the marker's background color
- 		if (added && deleted) {
- 			marker.style.backgroundColor = "orange";
- 		} else if (added) {
- 			marker.style.backgroundColor = "green";
- 		} else if (deleted) {
- 			marker.style.backgroundColor = "red";
- 		} else {
- 			marker.style.backgroundColor = "transparent";
- 		}
-
- 		// Append marker to sidebar
- 		sidebar.appendChild(marker);
- 	});
-
- 	// After all markers are appended, check if total sidebar height exceeds screen height
- 	const sidebarHeight = sidebar.scrollHeight;
-  const screenHeightWithMargin = screenHeight - 40;
-
-  console.log('sidebarHeight', sidebarHeight)
-  console.log('screenHeightWithMargin', screenHeightWithMargin)
-
- 	if (sidebarHeight > screenHeightWithMargin) {
-
- 		console.log('Adjusting sidebar height')
-
- 		const excessHeight = sidebarHeight - screenHeightWithMargin;
- 		const backoffValue = excessHeight / lines.length; // Calculate backoff value per marker
-
- 		// Adjust each marker's height to remove the excess
- 		Array.from(sidebar.children).forEach(marker => {
- 			const currentHeight = parseFloat(marker.style.height);
- 			const adjustedHeight = currentHeight - backoffValue;
- 			marker.style.height = `${adjustedHeight}px`;
- 		});
-
-    console.log('Updated sidebarHeight', sidebarHeight)
- 	}
-
- 	// Adjust line numbers
- 	console.log('Adjusting line number width')
- 	let maxWidth = 0;
- 	lineNums.forEach(lineNum => {
- 		// Temporarily set width to auto to accurately measure content width
- 		lineNum.style.width = 'auto';
- 		const width = lineNum.offsetWidth;
- 		if (width > maxWidth) {
- 			maxWidth = width;
- 		}
- 	});
-
- 	// Set the width of all .line-num elements to maxWidth
- 	lineNums.forEach(lineNum => {
- 		lineNum.style.width = `${maxWidth}px`;
- 	});
-
-
- });
- """
-
-HTML_CODE = """
-    <html>
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Diff Viewer</title>
-        <style>{css_code}</style>
-      </head>
-      <body>
-        <div id="diff-container">{diff_content}</div>
-        <div id="sidebar"></div>
-        <script>{js_code}</script>
-      </body>
-    </html>
-"""
-
-
 def process_line(
     text: str,
 ) -> Tuple[Union[str, None], Union[str, None], Union[str, None]]:
-    """Process a line of text and categorize into partial, whole, and remaining lines."""
+    """Process a line of text and categorize into partial, whole, and remaining lines.
+
+    Parameters
+    ----------
+    text: str
+      The text to be processed.
+
+    Returns
+    -------
+    Tuple[Union[str, None], Union[str, None], Union[str, None]]
+      A tuple containing the partial, whole, and remaining lines.
+    """
 
     partial, whole_lines, remaining = None, None, None
 

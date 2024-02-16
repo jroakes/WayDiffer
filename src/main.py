@@ -1,16 +1,44 @@
+"""Main application file for the Wayback Machine URL Comparison Tool."""
+
+from typing import Union, Dict
 import streamlit as st
 import streamlit.components.v1 as components
-from data import get_available_dates, process_diff, save_file
+from datetime import datetime
+from diff_data import get_available_dates, process_diff, save_file
 import webbrowser
 
 
-def list_available_dates(url, history_days):
+def list_available_dates(
+    url: str, history_days: int
+) -> Union[Dict[str, datetime], None]:
+    """List available dates for a URL in the Wayback Machine.
+
+    Parameters
+    ----------
+    url : str
+        The URL to check for available dates.
+    history_days : int
+        The number of historical days to check for available dates.
+
+    Returns
+    -------
+    Union[Dict[str, datetime], None]
+        A dictionary of available dates and their corresponding datetime objects, or None if no dates are found.
+
+    Raises
+    ------
+    Exception
+        If an error occurs while retrieving the available dates.
+    """
+
     try:
         available_dates = get_available_dates(url, history_days)
         if available_dates:
             return available_dates
         else:
-            st.write("Failed to retrieve available dates.")
+            st.warning(
+                "Failed to find available dates. Please check the URL and try again or try a longer date range."
+            )
             return None
     except Exception as e:
         st.error(f"Error retrieving dates: {e}")
@@ -18,20 +46,34 @@ def list_available_dates(url, history_days):
 
 
 def main():
+    """Main application function."""
 
     st.set_page_config(layout="wide")
 
-    st.title("🤖 💾 Wayback Machine URL Comparison Tool")
+    st.title("🤖 💾 Waydiffer: Wayback Machine URL Comparison Tool")
 
     st.write(
-        """This tool allows you to compare two versions of a URL using the Wayback Machine.
-        It uses [diff_match_patch](https://github.com/google/diff-match-patch) for the diffing.
-        It should handle HTML, CSS, and JavaScript file diffs."""
+        "**Waydiffer** allows you to compare the content of a URL from the Wayback Machine with its current version. You can also view the differences between two selected Wayback Machine snapshots."
     )
 
-    st.write(
-        "You can grab the source code for this app [here](https://github.com/jroakes/WayDiffer)."
-    )
+    expander = st.expander("More Info")
+
+    waydiffer_description = """
+    It utilizes the [diff_match_patch](https://github.com/google/diff-match-patch) library from Google for tracking differences in HTML, CSS, and JavaScript files between two selected snapshots.
+
+    Features include:
+    - Finding available dates for a URL in the Wayback Machine.
+    - Diffing support for HTML, CSS, and JavaScript.
+    - Auto-beautification of HTML, CSS, and JavaScript files.
+    - Custom diff interface with line numbers for easy comparison.
+    - Two viewing options: inline or in a new window.
+
+    Note: ⚠️ Open in a new window does not work in Streamlit Hosted Apps.
+
+    Access the source code [here](https://github.com/jroakes/WayDiffer).
+    """
+
+    expander.write(waydiffer_description)
 
     st.divider()
 
@@ -44,7 +86,7 @@ def main():
     st.header("Step 1: List Available Dates")
 
     with st.form("url_input_form"):
-        url = st.text_input(
+        url_input = st.text_input(
             "Enter URL", key="url_input", help="Enter the URL to compare"
         )
         history_days = st.number_input(
@@ -55,25 +97,37 @@ def main():
             key="history_days_input",
             help="Enter the number of historical days to check for available dates",
         )
-        submitted = st.form_submit_button("List Available Dates")
+        disabled = True if not url_input else False
+        submitted = st.form_submit_button(
+            "List Available Dates",
+            type="primary",
+            disabled=disabled,
+        )
 
-    if submitted and url:
-        available_dates = list_available_dates(url, history_days)
+    if submitted and url_input:
+        available_dates = list_available_dates(url_input, history_days)
         if available_dates:
-            st.write("Available dates:")
+            st.write("### Available dates:")
             for memento_url, datetime_obj in available_dates.items():
-                col1, col2 = st.columns([0.8, 0.2])
+
+                col1, col2 = st.columns([2, 1])
                 with col1:
-                    st.write(f"{memento_url} - {datetime_obj}")
+                    # st.write(f"{memento_url} - {datetime_obj}")
+                    st.link_button(
+                        f"{memento_url} - {datetime_obj} ↗",
+                        memento_url,
+                        use_container_width=True,
+                    )
                 with col2:
                     btn_key = f"btn_{memento_url}"
                     if st.button(
                         "Use This Date",
                         key=btn_key,
+                        type="primary",
                         on_click=lambda memento_url=memento_url: st.session_state.update(
                             {
                                 "historical_url_input": memento_url,
-                                "current_url_input": url,
+                                "current_url_input": url_input,
                             }
                         ),
                     ):
@@ -99,7 +153,13 @@ def main():
             help="Choose how to view the diff.  Open in a new window does not work in Streamlit Hosted Apps.",
         )
         st.write("")
-        diff_submitted = st.form_submit_button("Run Comparison")
+
+        disabled = True if not current_url or not historical_url else False
+        diff_submitted = st.form_submit_button(
+            "Run Comparison",
+            type="primary",
+            disabled=disabled,
+        )
 
     if diff_submitted and current_url and historical_url:
         display_option = "inline" if view_option == "View inline" else "new window"
