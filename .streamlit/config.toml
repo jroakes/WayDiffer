@@ -1,0 +1,20 @@
+[global]
+showWarningOnDirectExecution = false
+
+[client]
+showErrorDetails  = true
+
+[theme]
+base = "light"
+
+[server]
+fileWatcherType = "none"
+headless = true
+enableCORS=false
+enableXsrfProtection=false
+
+[logger]
+level = "info"
+
+[browser]
+gatherUsageStats = false
