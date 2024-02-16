@@ -56,25 +56,6 @@ def main():
         "**Waydiffer** allows you to compare the content of a URL from the Wayback Machine with its current version. You can also view the differences between two selected Wayback Machine snapshots."
     )
 
-    expander = st.expander("More Info")
-
-    waydiffer_description = """
-    It utilizes the [diff_match_patch](https://github.com/google/diff-match-patch) library from Google for tracking differences in HTML, CSS, and JavaScript files between two selected snapshots.
-
-    Features include:
-    - Finding available dates for a URL in the Wayback Machine.
-    - Diffing support for HTML, CSS, and JavaScript.
-    - Auto-beautification of HTML, CSS, and JavaScript files.
-    - Custom diff interface with line numbers for easy comparison.
-    - Two viewing options: inline or in a new window.
-
-    Note: ⚠️ Open in a new window does not work in Streamlit Hosted Apps.
-
-    Access the source code [here](https://github.com/jroakes/WayDiffer).
-    """
-
-    expander.write(waydiffer_description)
-
     st.divider()
 
     if "historical_url_input" not in st.session_state:
