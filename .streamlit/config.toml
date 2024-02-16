@@ -6,7 +6,6 @@ showErrorDetails  = true
 
 [theme]
 base = "dark"
-font="monospace"
 
 [server]
 fileWatcherType = "none"
