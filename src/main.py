@@ -56,6 +56,25 @@ def main():
         "**Waydiffer** allows you to compare the content of a URL from the Wayback Machine with its current version. You can also view the differences between two selected Wayback Machine snapshots."
     )
 
+    expander = st.expander("More Info")
+
+    waydiffer_description = """
+    It utilizes the [diff_match_patch](https://github.com/google/diff-match-patch) library from Google for tracking differences in HTML, CSS, and JavaScript files between two selected snapshots.
+
+    Features include:
+    - Finding available dates for a URL in the Wayback Machine.
+    - Diffing support for HTML, CSS, and JavaScript.
+    - Auto-beautification of HTML, CSS, and JavaScript files.
+    - Custom diff interface with line numbers for easy comparison.
+    - Two viewing options: inline or in a new window.
+
+    Note: ⚠️ Open in a new window does not work in Streamlit Hosted Apps.
+
+    Access the source code [here](https://github.com/jroakes/WayDiffer).
+    """
+
+    expander.write(waydiffer_description)
+
     st.divider()
 
     if "historical_url_input" not in st.session_state:
@@ -63,6 +82,9 @@ def main():
 
     if "current_url_input" not in st.session_state:
         st.session_state["current_url_input"] = ""
+
+    if "url_input" not in st.session_state:
+        st.session_state["url_input"] = ""
 
     st.header("Step 1: List Available Dates")
 
@@ -72,17 +94,16 @@ def main():
         )
         history_days = st.number_input(
             "Enter number of historical days",
-            min_value=1,
+            min_value=10,
             value=30,
-            step=1,
+            step=10,
             key="history_days_input",
             help="Enter the number of historical days to check for available dates",
         )
-        disabled = True if not url_input else False
+
         submitted = st.form_submit_button(
             "List Available Dates",
             type="primary",
-            disabled=disabled,
         )
 
     if submitted and url_input:
@@ -135,11 +156,11 @@ def main():
         )
         st.write("")
 
-        disabled = True if not current_url or not historical_url else False
+        compare_disabled = True if not current_url or not historical_url else False
         diff_submitted = st.form_submit_button(
             "Run Comparison",
             type="primary",
-            disabled=disabled,
+            disabled=compare_disabled,
         )
 
     if diff_submitted and current_url and historical_url:
