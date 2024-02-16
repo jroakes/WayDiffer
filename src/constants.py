@@ -1,6 +1,6 @@
 """Constants for the diff viewer."""
 
-WBM_REGEX = r"(?:https?:\\?\/\\?\/web\.archive\.org\\?\/web\\?\/\w+\\?\/|\\?\/web\\?\/\w+\\?\/https?:\\?\/\\?\/web\.archive\.org\\?\/screenshot\\?\/|(?<=\"|\')\\?\/web\\?\/\w+\\?\/)"
+WBM_REGEX = r"(?:\\?\/\\?\/web\.archive\.org\\?\/web\\?\/\w+\\?\/|https?:\\?\/\\?\/web\.archive\.org\\?\/web\\?\/\w+\\?\/|\\?\/web\\?\/\w+\\?\/https?:\\?\/\\?\/web\.archive\.org\\?\/screenshot\\?\/|(?<=\"|\')\\?\/web\\?\/\w+\\?\/)"
 MAX_MEMENTO_LINES = 100
 TOP_USERAGENTS_URL = "https://raw.githubusercontent.com/microlinkhq/top-user-agents/master/src/index.json"
 DEFAULT_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"

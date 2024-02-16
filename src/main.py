@@ -4,7 +4,12 @@ from typing import Union, Dict
 import streamlit as st
 import streamlit.components.v1 as components
 from datetime import datetime
-from diff_data import get_available_dates, process_diff, save_file
+
+try:
+    from diff_data import get_available_dates, process_diff, save_file
+except:
+    from src.diff_data import get_available_dates, process_diff, save_file
+
 import webbrowser
 
 
@@ -48,7 +53,11 @@ def list_available_dates(
 def main():
     """Main application function."""
 
-    st.set_page_config(layout="wide")
+    st.set_page_config(
+        page_title="Waydiffer: Wayback Machine URL Comparison Tool",
+        page_icon="🤖 💾",
+        layout="wide",
+    )
 
     st.title("🤖 💾 Waydiffer: Wayback Machine URL Comparison Tool")
 
@@ -156,29 +165,32 @@ def main():
         )
         st.write("")
 
-        compare_disabled = True if not current_url or not historical_url else False
         diff_submitted = st.form_submit_button(
             "Run Comparison",
             type="primary",
-            disabled=compare_disabled,
         )
 
     if diff_submitted and current_url and historical_url:
-        display_option = "inline" if view_option == "View inline" else "new window"
-        html = process_diff(historical_url, current_url)
-        if html:
 
-            if html == "SAME CONTENT":
-                st.success("The content is the same.  No diff to display.")
-            elif display_option == "new window":
-                file_location = save_file(html)
-                webbrowser.open_new_tab(file_location)
+        display_option = "inline" if view_option == "View inline" else "new window"
+
+        with st.spinner("Processing diff..."):
+
+            html = process_diff(historical_url, current_url)
+
+            if html:
+
+                if html == "SAME CONTENT":
+                    st.success("The content is the same.  No diff to display.")
+                elif display_option == "new window":
+                    file_location = save_file(html)
+                    webbrowser.open_new_tab(file_location)
+                else:
+                    st.write("")
+                    st.header("Step 3: Enjoy the Diff!")
+                    components.html(html, height=1000, scrolling=True)
             else:
-                st.write("")
-                st.header("Step 3: Enjoy the Diff!")
-                components.html(html, height=1000, scrolling=True)
-        else:
-            st.error("Failed to process diff. Please ensure the URLs are correct.")
+                st.error("Failed to process diff. Please ensure the URLs are correct.")
 
 
 if __name__ == "__main__":

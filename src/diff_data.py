@@ -16,16 +16,28 @@ from bs4 import BeautifulSoup, Comment
 
 from loguru import logger
 
-from constants import (
-    HTML_CODE,
-    CSS_CODE,
-    JS_CODE,
-    WBM_REGEX,
-    MAX_MEMENTO_LINES,
-    TOP_USERAGENTS_URL,
-    DEFAULT_USER_AGENT,
-    TIMEOUT,
-)
+try:
+    from constants import (
+        HTML_CODE,
+        CSS_CODE,
+        JS_CODE,
+        WBM_REGEX,
+        MAX_MEMENTO_LINES,
+        TOP_USERAGENTS_URL,
+        DEFAULT_USER_AGENT,
+        TIMEOUT,
+    )
+except:
+    from src.constants import (
+        HTML_CODE,
+        CSS_CODE,
+        JS_CODE,
+        WBM_REGEX,
+        MAX_MEMENTO_LINES,
+        TOP_USERAGENTS_URL,
+        DEFAULT_USER_AGENT,
+        TIMEOUT,
+    )
 
 
 def get_available_dates(url: str, history_days: int = 365) -> Union[dict, None]:
