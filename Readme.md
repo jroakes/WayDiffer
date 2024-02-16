@@ -1,9 +1,9 @@
-# WayDiffer: Wayback Machine URL Comparison Tool
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://share.streamlit.io/waydiffer/waydiffer/main/src/main.py)
+# 🤖 💾 WayDiffer: Wayback Machine URL Comparison Tool
+[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://waydiffer.streamlit.app/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Description
-Diff two documents and highlight the differences.
+Diff a file with a historical Wayback Machine file and highlight the differences.
 Works for HTML, CSS, and JS files.
 
 ## Usage
@@ -23,7 +23,12 @@ poetry run pre-commit run --all-files
 ```
 
 ## Requirements
-See requirements.txt
+ - jsbeautifier
+- cssbeautifier
+- bs4
+- diff_match_patch
+- loguru
+- streamlit
 
 ## Environmental Variables
 None

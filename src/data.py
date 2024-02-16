@@ -15,6 +15,8 @@ from loguru import logger
 
 
 WBM_REGEX = r"(?:https?:\\?\/\\?\/web\.archive\.org\\?\/web\\?\/\w+\\?\/|\\?\/web\\?\/\w+\\?\/https?:\\?\/\\?\/web\.archive\.org\\?\/screenshot\\?\/|(?<=\"|\')\\?\/web\\?\/\w+\\?\/)"
+MAX_MEMENTO_LINES = 100
+USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
 
 
 # Function to retrieve available memento URLs and their datetimes for a URL from the TimeMap service
@@ -43,7 +45,6 @@ def get_available_dates(url: str, history_days: int = 365) -> Union[dict, None]:
     try:
         # Calculate the start date based on the specified history_days
         start_date = datetime.now() - timedelta(days=history_days)
-        start_date_str = start_date.strftime("%Y%m%d%H%M%S")
 
         # TimeMap URL for the given URL
         timemap_url = f"http://web.archive.org/web/timemap/link/{url}"
@@ -65,6 +66,8 @@ def get_available_dates(url: str, history_days: int = 365) -> Union[dict, None]:
                     )
                     if rel == "memento" and datetime_obj >= start_date:
                         mementos[memento_url] = datetime_obj
+                        if len(mementos) >= MAX_MEMENTO_LINES:
+                            break
             return mementos
         else:
             logger.warn(
@@ -187,7 +190,10 @@ def fetch_and_beautify_content(url: str) -> Union[str, None]:
     """
 
     # Fetch content
-    response = requests.get(url)
+    headers = {"User-Agent": USER_AGENT}  # Set the user agent to avoid 403 errors
+
+    response = requests.get(url, headers=headers)
+
     if response.status_code == 200:
         content_type = response.headers["Content-Type"]
         content = response.text
@@ -227,11 +233,11 @@ def fetch_and_beautify_content(url: str) -> Union[str, None]:
         return beautified_content
 
     elif response.status_code in [404, 403]:
-        logger.warn(f"{url} does not exist in the Wayback Machine.")
+        logger.warning(f"{url} does not exist in the Wayback Machine.")
         return None
 
     else:
-        logger.warn(
+        logger.warning(
             f"Failed to fetch content from {url}. Status code: {response.status_code}"
         )
         return None
@@ -488,6 +494,10 @@ def process_diff(url1: str, url2: str) -> Union[str, None]:
 
     if content1 and content2:
 
+        if content1 == content2:
+            logger.info("The content from both URLs is the same.")
+            return "SAME CONTENT"
+
         # Perform the diffs
         dmp = diff_match_patch()
         diffs = dmp.diff_main(content1, content2)
@@ -546,8 +556,8 @@ def process_diff(url1: str, url2: str) -> Union[str, None]:
         return html
 
     else:
-        logger.error("Failed to fetch JavaScript content from one or both URLs.")
-        st.error("Failed to fetch JavaScript content from one or both URLs.")
+        logger.error("Failed to fetch content from one or both URLs.")
+        st.error("Failed to fetch content from one or both URLs.")
         return None
 
 

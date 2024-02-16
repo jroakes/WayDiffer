@@ -21,7 +21,19 @@ def main():
 
     st.set_page_config(layout="wide")
 
-    st.title("🚂 Wayback Machine URL Comparison Tool")
+    st.title("🤖 💾 Wayback Machine URL Comparison Tool")
+
+    st.write(
+        """This tool allows you to compare two versions of a URL using the Wayback Machine.
+        It uses [diff_match_patch](https://github.com/google/diff-match-patch) for the diffing.
+        It should handle HTML, CSS, and JavaScript file diffs."""
+    )
+
+    st.write(
+        "You can grab the source code for this app [here](https://github.com/jroakes/WayDiffer)."
+    )
+
+    st.divider()
 
     if "historical_url_input" not in st.session_state:
         st.session_state["historical_url_input"] = ""
@@ -29,14 +41,19 @@ def main():
     if "current_url_input" not in st.session_state:
         st.session_state["current_url_input"] = ""
 
+    st.header("Step 1: List Available Dates")
+
     with st.form("url_input_form"):
-        url = st.text_input("Enter URL", key="url_input")
+        url = st.text_input(
+            "Enter URL", key="url_input", help="Enter the URL to compare"
+        )
         history_days = st.number_input(
             "Enter number of historical days",
             min_value=1,
             value=30,
             step=1,
             key="history_days_input",
+            help="Enter the number of historical days to check for available dates",
         )
         submitted = st.form_submit_button("List Available Dates")
 
@@ -63,29 +80,40 @@ def main():
                         pass
 
     st.write("")
-    st.write("")
+
+    st.header("Step 2: Compare URLs")
+
     with st.form("diff_input_form"):
-        current_url = st.text_input("Enter current URL", key="current_url_input")
+        current_url = st.text_input(
+            "Enter current URL", key="current_url_input", help="Enter the current URL"
+        )
         historical_url = st.text_input(
-            "Enter historical URL", key="historical_url_input"
+            "Enter historical URL",
+            key="historical_url_input",
+            help="Enter the historical URL",
         )
         view_option = st.radio(
             "Choose how to view the diff:",
-            ("Open in new window", "View inline"),
+            ("View inline", "Open in new window"),
             key="view_option_input",
+            help="Choose how to view the diff.  Open in a new window does not work in Streamlit Hosted Apps.",
         )
+        st.write("")
         diff_submitted = st.form_submit_button("Run Comparison")
 
     if diff_submitted and current_url and historical_url:
         display_option = "inline" if view_option == "View inline" else "new window"
-        html = process_diff(current_url, historical_url)
+        html = process_diff(historical_url, current_url)
         if html:
-            if display_option == "new window":
+
+            if html == "SAME CONTENT":
+                st.success("The content is the same.  No diff to display.")
+            elif display_option == "new window":
                 file_location = save_file(html)
                 webbrowser.open_new_tab(file_location)
             else:
                 st.write("")
-                st.write("")
+                st.header("Step 3: Enjoy the Diff!")
                 components.html(html, height=1000, scrolling=True)
         else:
             st.error("Failed to process diff. Please ensure the URLs are correct.")
