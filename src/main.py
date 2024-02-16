@@ -72,6 +72,7 @@ def main():
 
     Features include:
     - Finding available dates for a URL in the Wayback Machine.
+    - Cleaning code and URLs from Wayback Machine URLs.
     - Diffing support for HTML, CSS, and JavaScript.
     - Auto-beautification of HTML, CSS, and JavaScript files.
     - Custom diff interface with line numbers for easy comparison.
