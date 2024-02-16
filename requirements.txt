@@ -1,0 +1,6 @@
+jsbeautifier
+cssbeautifier
+bs4
+diff_match_patch
+loguru
+streamlit

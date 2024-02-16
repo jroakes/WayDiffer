@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "waydiffer"
+version = "0.1.0"
+description = "Diff two documents and highlight the differences."
+authors = ["JR Oakes <jroakes@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.9,<3.9.7 || >3.9.7,<4.0"
+jsbeautifier = "^1.15.0"
+cssbeautifier = "^1.15.0"
+bs4 = "^0.0.2"
+diff-match-patch = "^20230430"
+loguru = "^0.7.2"
+streamlit = "^1.31.1"
+
+
+[tool.poetry.group.dev.dependencies]
+black = "^24.2.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
